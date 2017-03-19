@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+</head>
+
+<body>
+    <p>hn link here</p>
+    <input></input>
+    <div class="main-content">
+        <p id="content-placeholder"></p>
+    </div>
+
+    <script>
+        (function () {
+
+            // deal with cors
+            $.ajaxPrefilter( function (options) {
+                if (options.crossDomain && jQuery.support.cors) {
+                    var http = (window.location.protocol === 'http:' ? 'http:' : 'https:');
+                    options.url = http + '//cors-anywhere.herokuapp.com/' + options.url;
+                }
+            });
+
+            // get the link id from the current url
+            var linkId = /id=([0-9]+)/.exec(window.location.search)[1];
+
+            if (!linkId) {
+                console.log('ERROR couldnt get id from url');
+                return;
+            }
+
+            console.log(link);
+            
+            var link = "https://news.ycombinator.com/item?id=" + linkId;
+                        console.log(link);
+
+            // download all the commments
+            $.get(
+                link,
+                function (data, status) {
+
+                    // what kind of indention characters per how indented it is
+                    var PER_SUB_COMMENT_INDENT = '&nbsp;&nbsp;&nbsp;|&nbsp;';
+
+                    // what to apply after the indention
+                    var FINAL_INDENTION_CHARS = '&nbsp;>&nbsp;&nbsp;';
+
+                    if (status !== 'success' || data === 'No such item.') {
+                        console.log('Error retrieving comments from HN, returned "no such item"');
+                        return;
+                    }
+
+                    try {
+                         // go through each of the comments
+                        $(data).find('.comment-tree').find('table').each(function () {
+
+                            /*
+                            extract the 'width' if its a sub comment or sub sub comment etc
+                            0 is root comments, every 40 is another sub comment
+                            */
+                            var width = $(this).find("img[src$='s.gif']").attr("width");
+                            var parsedWidth = parseInt(width);
+                            if (isNaN(parsedWidth)) {
+                                // failed default to zero
+                                parsedWidth = 0;
+                            }
+
+                            // get the actual comment
+                            var commentElement = $(this).find('span.c00');
+
+                            /* downvoted to grey comments will not have span.c00 --> ignore them */
+                            if (!commentElement[0]) {
+                                return;
+                            }
+
+                            // get the link to the comment
+                            var link = 'https://news.ycombinator.com/' + $(this).find('span.age').find('a').attr('href');
+
+                            // get the actual comment html
+                            var ctext = commentElement[0].outerHTML;
+
+                            // get rid of the reply link and a bunch of spaces
+                            ctext = ctext.substring(0, ctext.lastIndexOf('reply')).trim();
+
+                            // indent based on how indented it is
+                            var indentor = '';
+                            for (let i = 0; i < parsedWidth; i += 40) {
+                                indentor += PER_SUB_COMMENT_INDENT;
+                            }
+
+                            indentor += '<a href="' + link + '">L</a>' + FINAL_INDENTION_CHARS;
+
+                            // add our indenting html with the actual comment html
+                            var indentedComment = indentor + ctext;
+
+                            // add it to the html
+                            $("#content-placeholder").append('<p>' + indentedComment + '</p>')
+                        });
+                    } catch (e) {
+                        console.log('Error parsing post');
+                    }
+            });
+        })();
+    </script>
+</body>
+</html>
