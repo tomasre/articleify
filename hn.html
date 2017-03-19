@@ -2,11 +2,27 @@
 <html>
 <head>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-alpha.6/css/bootstrap.min.css" integrity="sha384-rwoIResjU2yc3z8GV/NPeZWAv56rSmLldC3R/AZzGRnGxQQKnKkoFVhFQhNUwEyJ" crossorigin="anonymous">
 </head>
 
 <body>
-    <p>hn link here</p>
-    <input></input>
+    <div class="container">
+        <br>
+        <div class="alert alert-warning" role="alert" style="display:none;" id="alert-fail-id">
+            <strong>Error</strong> Couldn't get the id from the url
+        </div>
+        <div class="alert alert-warning" role="alert" style="display:none;" id="alert-fail-no-item">
+            <strong>Error</strong> retrieving comments from HN, returned "no such item"
+        </div>
+
+        <div class="alert alert-danger" role="alert" style="display:none;" id="alert-fail-parsing">
+            <strong>Error</strong> parsing the comments
+        </div>
+        <div class="progress" id="downloading-article-progress">
+            <div class="progress-bar progress-bar-striped progress-bar-animated bg-success" role="progressbar" aria-valuenow="75" aria-valuemin="0" aria-valuemax="100" style="width: 100%">downloading comments...</div>
+        </div>
+    </div>
+    
     <div class="main-content">
         <p id="content-placeholder"></p>
     </div>
@@ -23,22 +39,26 @@
             });
 
             // get the link id from the current url
-            var linkId = /id=([0-9]+)/.exec(window.location.search)[1];
+            var linkId = /id=([0-9]+)/.exec(window.location.search);
 
-            if (!linkId) {
-                console.log('ERROR couldnt get id from url');
-                return;
+            if (linkId) {
+                linkId = linkId[1];
             }
 
-            console.log(link);
+            if (!linkId) {
+                $("#alert-fail-id").show();
+                $("#downloading-article-progress").hide();
+                return;
+            }
             
             var link = "https://news.ycombinator.com/item?id=" + linkId;
-                        console.log(link);
 
             // download all the commments
             $.get(
                 link,
                 function (data, status) {
+
+                    $("#downloading-article-progress").hide();
 
                     // what kind of indention characters per how indented it is
                     var PER_SUB_COMMENT_INDENT = '&nbsp;&nbsp;&nbsp;|&nbsp;';
@@ -47,11 +67,12 @@
                     var FINAL_INDENTION_CHARS = '&nbsp;>&nbsp;&nbsp;';
 
                     if (status !== 'success' || data === 'No such item.') {
-                        console.log('Error retrieving comments from HN, returned "no such item"');
+                        $("#alert-fail-no-item").show();
                         return;
                     }
 
                     try {
+
                          // go through each of the comments
                         $(data).find('.comment-tree').find('table').each(function () {
 
@@ -98,7 +119,8 @@
                             $("#content-placeholder").append('<p>' + indentedComment + '</p>')
                         });
                     } catch (e) {
-                        console.log('Error parsing post');
+                        $("#alert-fail-parsing").show();
+                        console.log(e);
                     }
             });
         })();
